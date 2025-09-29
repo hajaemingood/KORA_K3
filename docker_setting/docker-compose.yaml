@@ -1,0 +1,23 @@
+services:
+  ros:
+    build: .
+    container_name: kora_k3
+    network_mode: host
+
+    gpus: all
+    environment:
+      TZ: Asia/Seoul
+      DISPLAY: ${DISPLAY}
+      QT_X11_NO_MITSHM: "1"
+      NVIDIA_VISIBLE_DEVICES: "all"
+      NVIDIA_DRIVER_CAPABILITIES: "compute,utility,graphics,video,display"
+
+    volumes:
+      - ~/.ssh:/root/.ssh:ro
+      - ./logs:/root/logs
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ${HOME}/KORA_K3:/root/KORA_K3
+
+    shm_size: "1gb"
+    restart: unless-stopped
+    command: ["bash", "-lc", "source /opt/ros/noetic/setup.bash && sleep infinity"]
