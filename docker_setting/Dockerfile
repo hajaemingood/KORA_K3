@@ -21,6 +21,8 @@ RUN apt-get update && apt-get install -y \
     ros-noetic-gazebo-plugins ros-noetic-joint-state-publisher-gui \
     ros-noetic-sparse-bundle-adjustment \ 
     ros-noetic-map-server ros-noetic-map-server \
+    ros-noetic-geographic-msgs \
+    libgeographic-dev \
  && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # ROS1 자동 로드(1회만)
