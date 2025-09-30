@@ -12,3 +12,4 @@ __pycache__/
 *.tmp
 *.log
 !src/slam_toolbox//**!src/robot_localization/**
+!src/robot_localization/**
