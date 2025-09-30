@@ -7,8 +7,7 @@ ENV LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 RUN apt-get update && apt-get install -y \
     tzdata locales curl gnupg2 lsb-release ca-certificates \
     iproute2 net-tools iputils-ping netcat \
-    openssh-client wget vim less git \
-    nano \ 
+    openssh-client wget vim less git nano \
     mesa-utils libgl1-mesa-glx libglu1-mesa \
     libx11-6 libxext6 libxrender1 libxrandr2 libxi6 libxinerama1 \
  && ln -fs /usr/share/zoneinfo/$TZ /etc/localtime \
@@ -20,6 +19,8 @@ RUN apt-get update && apt-get install -y \
     gazebo11 \
     ros-noetic-gazebo-ros ros-noetic-gazebo-ros-pkgs ros-noetic-gazebo-ros-control \
     ros-noetic-gazebo-plugins ros-noetic-joint-state-publisher-gui \
+    ros-noetic-sparse-bundle-adjustment \ 
+    ros-noetic-map-server ros-noetic-map-server \
  && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # ROS1 자동 로드(1회만)
