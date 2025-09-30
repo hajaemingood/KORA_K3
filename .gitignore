@@ -1,6 +1,6 @@
 # 빌드 결과물
 build/
-install/
+devel/
 log/
 
 # Python 캐시
