@@ -1,7 +1,7 @@
 <!-- file: odometry_launch.launch -->
 <launch>
   <!-- ROS1에서는 use_sim_time 전역 파라미터로 별도 설정 -->
-  <param name="/use_sim_time" value="true"/>
+  <param name="/use_sim_time" value="false"/>
 
   <!-- wheel_odom 파라미터 로드 -->
   <rosparam file="$(find kora_k3)/config/wheel_odom.yaml" command="load"/>

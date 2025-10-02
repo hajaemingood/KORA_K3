@@ -167,11 +167,11 @@
     <!--LiDAR-->
     <joint name = "laser_joint" type = "fixed">
         <parent link = "base_link"/>
-        <child link = "laser_frame"/>
+        <child link = "laser"/>
         <origin xyz = "0 0 0.075" rpy="0 0 0"/>
     </joint>
 
-    <link name="laser_frame">
+    <link name="laser">
         <visual>
             <geometry>
                 <cylinder radius="0.03" length="0.03"/>
@@ -216,7 +216,7 @@
     </link>
 
     <!-- IMU -->
-    <joint name = "imu_link" type = "fixed">
+    <joint name = "imu_joint" type = "fixed">
         <parent link = "body"/>
         <child link = "imu_link"/>
         <origin xyz = "0.03 0 0.065" rpy = "0 0 0"/>

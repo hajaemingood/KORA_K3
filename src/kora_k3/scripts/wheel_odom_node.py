@@ -42,7 +42,7 @@ class WheelOdomNode(object):
         self.odom_frame = rospy.get_param('~odom_frame', 'odom')
         self.base_frame = rospy.get_param('~base_frame', 'base_link')
         self.odom_topic = rospy.get_param('~odom_topic', '/wheel_odom')
-        self.publish_tf = rospy.get_param('~publish_tf', False)
+        self.publish_tf = rospy.get_param('~publish_tf', True)
         self.body_forward_sign = rospy.get_param('~body_forward_sign', 1.0)
 
         self.use_imu_heading = rospy.get_param('~use_imu_heading', True)
@@ -97,7 +97,10 @@ class WheelOdomNode(object):
     # 타이머
     def on_timer(self, event):
         # dt 계산
-        dt = (event.current_real - event.last_real).to_sec()
+        if event.last_real is None:
+            dt = 0.0
+        else:
+            dt = (event.current_real - event.last_real).to_sec()
         if dt <= 0.0 or dt > 1.0:
             dt = 0.0
 

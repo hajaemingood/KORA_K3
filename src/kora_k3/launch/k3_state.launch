@@ -1,21 +1,21 @@
+<!-- file: k3_description.launch -->
 <launch>
-  <!-- 경로/옵션 인자 -->
+  <!-- 인자 -->
   <arg name="model"              default="$(find kora_k3)/urdf/k3.xacro"/>
   <arg name="publish_frequency"  default="50.0"/>
-  <arg name="use_gui"            default="false"/>  <!-- joint_state_publisher_gui 사용 여부 -->
+  <arg name="use_gui"            default="false"/>
 
-  <!-- xacro → robot_description 로드 -->
-  <!-- Noetic에서는 실행파일 이름이 보통 'xacro' 입니다 -->
-  <param name="robot_description" command="$(find xacro)/xacro $(arg model)"/>
+  <!-- xacro → robot_description (inorder 옵션으로 안전하게) -->
+  <param name="robot_description"
+         command="$(find xacro)/xacro --inorder $(arg model)"/>
 
-  <!-- TF 퍼블리시 -->
+  <!-- robot_state_publisher: TF 퍼블리시 -->
   <node pkg="robot_state_publisher" type="robot_state_publisher"
         name="robot_state_publisher" output="screen">
     <param name="publish_frequency" value="$(arg publish_frequency)"/>
   </node>
 
-  <!-- 가변 조인트(예: 조향/바퀴)가 남아있다면 joint_state_publisher로 0각도라도 퍼블리시 -->
-  <!-- GUI가 필요 없으면 기본값 false 그대로 두세요 -->
+  <!-- joint_state_publisher: 가변 조인트 초기값이라도 퍼블리시 -->
   <group unless="$(arg use_gui)">
     <node pkg="joint_state_publisher" type="joint_state_publisher"
           name="joint_state_publisher" output="screen">
@@ -24,9 +24,15 @@
     </node>
   </group>
 
-  <!-- 필요 시 GUI로 수동 슬라이더 제어 -->
+  <!-- 필요 시 GUI 슬라이더 -->
   <group if="$(arg use_gui)">
     <node pkg="joint_state_publisher_gui" type="joint_state_publisher_gui"
           name="joint_state_publisher_gui" output="screen"/>
   </group>
+
+  <!-- 디버그용 고정 TF: 필요할 때만 잠깐 켜서 프레임 확인 -->
+  <!--
+  <node pkg="tf" type="static_transform_publisher" name="world_to_base_link"
+        args="0 0 0 0 0 0 world base_link 100"/>
+  -->
 </launch>
