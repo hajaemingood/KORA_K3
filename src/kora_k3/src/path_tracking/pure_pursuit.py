@@ -15,7 +15,7 @@ class Pure_pursuit:
         self.drive_pub = rospy.Publisher("/drive", AckermannDriveStamped, queue_size=10)
         self.drive_msg = AckermannDriveStamped()
 
-        self.csv_file = '~/KORA_K3/src/kora_k3/src/pure_pursuit/waypoints/waypoints.csv'
+        self.csv_file = '~/KORA_K3/src/kora_k3/src/path_tracking/waypoints/waypoints.csv'
         self.waypoints = self.load_waypoints()
         # Parameters
         self.lookahead_distance = 0.7  # Lookahead distance for Pure Pursuit

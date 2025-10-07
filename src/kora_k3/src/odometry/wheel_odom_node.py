@@ -37,8 +37,8 @@ def q_to_yaw(z, w):
 class WheelOdomNode(object):
     def __init__(self):
         # 노드 파라미터
-        self.L = rospy.get_param('~wheelbase', 1.55)
-        self.R = rospy.get_param('~wheel_radius', 0.03)
+        self.L = rospy.get_param('~wheelbase', 0.325)
+        self.R = rospy.get_param('~wheel_radius', 0.05)
         self.odom_frame = rospy.get_param('~odom_frame', 'odom')
         self.base_frame = rospy.get_param('~base_frame', 'base_link')
         self.odom_topic = rospy.get_param('~odom_topic', '/wheel_odom')
@@ -46,7 +46,7 @@ class WheelOdomNode(object):
         self.body_forward_sign = rospy.get_param('~body_forward_sign', 1.0)
 
         self.use_imu_heading = rospy.get_param('~use_imu_heading', True)
-        self.imu_topic = rospy.get_param('~imu_topic', '/imu/data')
+        self.imu_topic = rospy.get_param('~imu_topic', '/imu/data_centered')
 
         self.erpm_per_radps = rospy.get_param('~erpm_per_radps', 300.0)
         self.servo_center = rospy.get_param('~servo_center', 0.5)

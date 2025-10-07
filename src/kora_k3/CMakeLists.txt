@@ -160,6 +160,7 @@ include_directories(
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
 catkin_install_python(PROGRAMS
+  src/sensor_hub/imu_pub.py
   src/odometry/wheel_odom_node.py
   src/path_tracking/pure_pursuit.py
   src/path_tracking/waypoint_visualization.py

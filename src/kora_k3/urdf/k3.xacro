@@ -29,24 +29,24 @@
     <joint name = "body_joint" type = "fixed">
         <parent link = "base_link"/>
         <child link = "body" />
-        <origin xyz = "-0.12 0 0"/>
+        <origin xyz = "-0.1514 0 -0.05"/>
     </joint>
 
     <link name = "body">
         <visual>
             <origin xyz = "0.1 0 0.03"/>
             <geometry>
-                <box size = "0.2 0.1 0.06"/>
+                <box size = "0.425 0.23 0.15"/>
             </geometry>
             <material name = "white"/>
         </visual>
         <collision>
             <origin xyz = "0.1 0 0.03"/>
             <geometry>
-                <box size = "0.2 0.1 0.06"/>
+                <box size = "0.425 0.23 0.15"/>
             </geometry>
         </collision>
-        <xacro:inertial_box mass="0.5" x="0.2" y="0.1" z="0.06">
+        <xacro:inertial_box mass="3.5" x="0.425" y="0.23" z="0.15">
             <origin xyz="0.1 0 0.03" rpy="0 0 0"/>
         </xacro:inertial_box>
     </link>
@@ -88,7 +88,7 @@
     <joint name="front_left_steer_joint" type="revolute">
         <parent link="base_link"/>
         <child  link="front_left_steer_link"/>
-        <origin xyz="0.055 0.065 0" rpy="0 0 0"/>   <!-- 원래 앞바퀴 위치와 같게 -->
+        <origin xyz="0.1736 0.115 -0.05" rpy="0 0 0"/>   <!-- 원래 앞바퀴 위치와 같게 -->
         <axis xyz="0 0 1"/>
         <limit lower="-0.349066" upper="0.349066" effort="30" velocity="2.0"/>
     </joint>
@@ -96,7 +96,7 @@
     <joint name="front_right_steer_joint" type="revolute">
         <parent link="base_link"/>
         <child  link="front_right_steer_link"/>
-        <origin xyz="0.055 -0.065 0" rpy="0 0 0"/>
+        <origin xyz="0.1736 -0.115 -0.05" rpy="0 0 0"/>
         <axis xyz="0 0 1"/>
         <limit lower="-0.349066" upper="0.349066" effort="30" velocity="2.0"/>
     </joint>
@@ -119,7 +119,7 @@
 
     <!-- REAR LEFT WHEEL -->
     <xacro:wheel_link name="rear_left_wheel" parent_link="base_link"
-                  xyz="-0.1 0.065 0" rpy="-${pi/2} 0 0" direction="1"/>
+                  xyz="-0.1514 0.115 -0.05" rpy="-${pi/2} 0 0" direction="1"/>
 
     <gazebo reference = "rear_left_wheel">
         <material>Gazebo/Black</material>
@@ -127,7 +127,7 @@
 
     <!-- REAR RIGHT WHEEL -->
     <xacro:wheel_link name="rear_right_wheel" parent_link="base_link"
-                  xyz="-0.1 -0.065 0" rpy="${pi/2} 0 0" direction="-1"/>
+                  xyz="-0.1514 -0.115 -0.05" rpy="${pi/2} 0 0" direction="-1"/>
 
     <gazebo reference = "rear_right_wheel">
         <material>Gazebo/Black</material>
@@ -168,58 +168,58 @@
     <joint name = "laser_joint" type = "fixed">
         <parent link = "base_link"/>
         <child link = "laser"/>
-        <origin xyz = "0 0 0.075" rpy="0 0 0"/>
+        <origin xyz = "0.0836 0 0.11" rpy="0 0 0"/>
     </joint>
 
     <link name="laser">
         <visual>
             <geometry>
-                <cylinder radius="0.03" length="0.03"/>
+                <cylinder radius="0.02" length="0.04"/>
             </geometry>
             <material name = "red"/>
         </visual>
         <collision>
             <geometry>
-                <cylinder radius="0.03" length="0.03"/>
+                <cylinder radius="0.02" length="0.04"/>
             </geometry>
         </collision>
     </link>
 
     <!-- CAMERA -->
     <joint name = "camera_joint" type = "fixed">
-        <parent link = "body"/>
+        <parent link = "base_link"/>
         <child link = "camera_link"/>
-        <origin xyz = "0.20 0 0.03" rpy="0 0 0"/>
+        <origin xyz = "0.1286 0 0.06" rpy="0 0 0"/>
     </joint>
 
     <link name = "camera_link">
         <visual>
             <geometry>
-                <box size = "0.01 0.03 0.03"/>
+                <box size = "0.025 0.12 0.03"/>
             </geometry>
             <material name = "red"/>
         </visual>
         <collision>
             <geometry>
-                <box size = "0.01 0.03 0.03"/>
+                <box size = "0.025 0.12 0.03"/>
             </geometry>
         </collision>
     </link>
 
-    <joint name = "camera_optical_joint" type = "fixed">
+    <!-- <joint name = "camera_optical_joint" type = "fixed">
         <parent link = "camera_link"/>
         <child link = "camera_link_optical"/>
         <origin xyz = "0 0 0" rpy = "${-pi/2} 0 ${pi/2}"/>
     </joint>
 
     <link name = "camera_link_optical">
-    </link>
+    </link> -->
 
     <!-- IMU -->
     <joint name = "imu_joint" type = "fixed">
-        <parent link = "body"/>
+        <parent link = "base_link"/>
         <child link = "imu_link"/>
-        <origin xyz = "0.03 0 0.065" rpy = "0 0 0"/>
+        <origin xyz = "-0.1014 0 0.02" rpy = "0 0 0"/>
     </joint>
 
     <link name = "imu_link">
@@ -231,7 +231,7 @@
         </visual>
         <collision>
             <geometry>
-                <box size = "0.03 0.01 0.03"/>
+                <box size = "0.03 0.03 0.01"/>
             </geometry>
         </collision>
     </link>

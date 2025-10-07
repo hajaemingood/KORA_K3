@@ -21,7 +21,7 @@ RUN apt-get update && apt-get install -y \
     ros-noetic-gazebo-plugins ros-noetic-joint-state-publisher-gui \
     ros-noetic-sparse-bundle-adjustment \ 
     ros-noetic-map-server ros-noetic-map-server \
-    ros-noetic-geographic-msgs \
+    ros-noetic-geographic-msgs ros-noetic-ackermann-msgs \
     libgeographic-dev \
  && apt-get clean && rm -rf /var/lib/apt/lists/*
 

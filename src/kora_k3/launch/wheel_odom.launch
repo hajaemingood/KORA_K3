@@ -6,6 +6,9 @@
   <!-- wheel_odom 파라미터 로드 -->
   <rosparam file="$(find kora_k3)/config/wheel_odom.yaml" command="load"/>
 
+  <!--imu filtering -->
+  <node pkg="kora_k3" type="imu_pub.py" name="imu_pub" output="screen"/>
+
   <!-- wheel_odom 노드 실행 -->
   <node pkg="kora_k3" type="wheel_odom_node.py" name="wheel_odom" output="screen"/>
 
