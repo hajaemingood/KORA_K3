@@ -9,13 +9,14 @@ ceres_loss_function: None
 # ROS Parameters
 odom_frame: odom
 map_frame: map
-base_frame: base_footprint
+base_frame: base_link
 scan_topic: /scan
-mode: mapping #localization
+mode: localization #mapping
 
 # if you'd like to start localizing on bringup in a map and pose
-#map_file_name: test_steve
-#map_start_pose: [5.0, 1.0, 0.0]
+map_start_pose: [0.0, 0.0, -1.57] # x, y, yaw
+map_file_name: /root/KORA_K3/src/kora_k3/maps/f5
+
 
 debug_logging: false
 throttle_scans: 1
