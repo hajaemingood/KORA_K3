@@ -5,21 +5,14 @@ import csv
 import sys
 from math import *
 from nav_msgs.msg import Odometry
-from sensor_msgs.msg import Imu
-from ackermann_msgs.msg import AckermannDriveStamped
 from std_msgs.msg import Float64
 
 class Pure_pursuit:
     def __init__(self):
         rospy.init_node("pure_pursuit_node", anonymous=True)
         rospy.Subscriber("/wheel_odom", Odometry, self.odom_callback)
-        # rospy.Subscriber("/imu/data_centered", Imu, self.imu_callback)
 
-        self.drive_pub = rospy.Publisher("/drive", AckermannDriveStamped, queue_size=10)
-        self.drive_msg = AckermannDriveStamped()
-        # self.imu_msg = Imu()
-
-        self.csv_file = '~/KORA_K3/src/kora_k3/src/path_tracking/waypoints/waypoints.csv'
+        self.csv_file = '/root/KORA_K3/src/kora_k3/src/path_tracking/waypoints/waypoints.csv'
         self.waypoints = self.load_waypoints()
         # Parameters
         self.lookahead_distance = 0.7  # Lookahead distance for Pure Pursuit
@@ -42,7 +35,8 @@ class Pure_pursuit:
         goal_point = self.find_goal_point(odom_msg)
         print(goal_point)
         # 3. Calculate curvature (steering angle)
-        steering_angle = self.calculate_steering_angle(goal_point)
+        steering_angle = self.calculate_steering_angle(goal_point) #0.5~-0.5 -> 0~1.0
+        steering_angle = -(steering_angle-0.5)
         # print(steering_angle)
         # 4. Publish the drive message
         self.publish_drive_message(steering_angle)
@@ -97,17 +91,16 @@ class Pure_pursuit:
     def publish_drive_message(self, steering_angle):
         # Create and publish the Ackermann drive message
 
-        if abs(steering_angle) > 0.35:
-            velocity = 1000
-
-        elif abs(steering_angle) > 0.175:
+        if steering_angle > 0.65 or steering_angle < 0.35:
             velocity = 2000
+
+        elif steering_angle > 0.875 or steering_angle < 0.175:
+            velocity = 1000
 
         else:
             velocity = 3000
 
         self.pub_move_motor_servo(velocity, steering_angle)
-        self.drive_pub.publish(self.drive_msg)
 
     def get_yaw_from_pose(self, odom_msg):
         # Extract yaw from the quaternion orientation
