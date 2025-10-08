@@ -4,32 +4,27 @@ import numpy as np
 import csv
 import sys
 from math import *
-from nav_msgs.msg import Odometry
+from geometry_msgs.msg import Pose2D
 from std_msgs.msg import Float64
 
 class Pure_pursuit:
     def __init__(self):
         rospy.init_node("pure_pursuit_node", anonymous=True)
-        rospy.Subscriber("/wheel_odom", Odometry, self.odom_callback)
+        rospy.Subscriber("/base_link_pose", Pose2D, self.base_callback)
+        self.motor_pub = rospy.Publisher('/commands/motor/speed', Float64, queue_size=1)
+        self.servo_pub = rospy.Publisher('/commands/servo/position', Float64, queue_size=1)
+        
+        self.speed_msg = Float64()
+        self.steer_msg = Float64()
+        
 
         self.csv_file = '/root/KORA_K3/src/kora_k3/src/path_tracking/waypoints/waypoints.csv'
         self.waypoints = self.load_waypoints()
         # Parameters
-        self.lookahead_distance = 0.7  # Lookahead distance for Pure Pursuit
+        self.lookahead_distance = 0.5  # Lookahead distance for Pure Pursuit
+        
 
-    def init_pubSub(self):
-        self.motor_pub = rospy.Publisher('/commands/motor/speed', Float64, queue_size=1)
-        self.servo_pub = rospy.Publisher('/commands/servo/position', Float64, queue_size=1)
-    
-    def pub_move_motor_servo(self, motor_speed, servo_pos):
-        speed_msg = Float64()
-        steer_msg = Float64()
-        speed_msg.data = motor_speed
-        steer_msg.data = servo_pos
-        self.motor_pub.publish(speed_msg)
-        self.servo_pub.publish(steer_msg)
-
-    def odom_callback(self, odom_msg):
+    def base_callback(self, odom_msg):
         # 1. Find the current waypoint to track
         # 2. Transform the goal point to the vehicle frame
         goal_point = self.find_goal_point(odom_msg)
@@ -46,9 +41,9 @@ class Pure_pursuit:
 
     def find_goal_point(self, odom_msg):
         # 현재 차량 위치
-        car_x = odom_msg.pose.pose.position.x                       # car x
-        car_y = odom_msg.pose.pose.position.y                       # car y
-        yaw = self.get_yaw_from_pose(odom_msg)                      # car yaw
+        car_x = odom_msg.x                    # car x
+        car_y = odom_msg.y                       # car y
+        yaw = odom_msg.theta                  # car yaw
 
         # 목표 경로점 리스트 초기화
         max_distance = -1
@@ -86,21 +81,25 @@ class Pure_pursuit:
         elif curvature > 0.5:
             curvature = 0.5
 
-        return curvature
+        return curvature*0.9
 
     def publish_drive_message(self, steering_angle):
         # Create and publish the Ackermann drive message
 
         if steering_angle > 0.65 or steering_angle < 0.35:
-            velocity = 2000
-
-        elif steering_angle > 0.875 or steering_angle < 0.175:
-            velocity = 1000
-
-        else:
             velocity = 3000
 
-        self.pub_move_motor_servo(velocity, steering_angle)
+        elif steering_angle > 0.875 or steering_angle < 0.175:
+            velocity = 2000
+
+        else:
+            velocity = 5000
+
+        self.speed_msg.data = velocity
+        self.steer_msg.data = steering_angle
+
+        self.motor_pub.publish(self.speed_msg)
+        self.servo_pub.publish(self.steer_msg)
 
     def get_yaw_from_pose(self, odom_msg):
         # Extract yaw from the quaternion orientation
