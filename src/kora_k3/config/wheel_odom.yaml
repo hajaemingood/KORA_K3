@@ -8,6 +8,6 @@ wheel_odom:
   body_forward_sign: 1.0
   use_imu_heading: true
   imu_topic: /imu/data_centered
-  erpm_per_radps: 300.0
+  rpm_scale: 0.025
   servo_center: 0.5
   max_steer_rad: 0.5

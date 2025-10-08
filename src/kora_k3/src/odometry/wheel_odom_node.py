@@ -48,7 +48,7 @@ class WheelOdomNode(object):
         self.use_imu_heading = rospy.get_param('~use_imu_heading', True)
         self.imu_topic = rospy.get_param('~imu_topic', '/imu/data_centered')
 
-        self.erpm_per_radps = rospy.get_param('~erpm_per_radps', 300.0)
+        self.rpm_scale = rospy.get_param('~rpm_scale', 0.025)  
         self.servo_center = rospy.get_param('~servo_center', 0.5)
         self.max_steer_rad = rospy.get_param('~max_steer_rad', 0.5)
 
@@ -82,9 +82,8 @@ class WheelOdomNode(object):
 
     # 콜백들
     def cb_motor(self, msg):
-        erpm = float(msg.data)
-        scale = self.erpm_per_radps if abs(self.erpm_per_radps) > 1e-9 else 1.0
-        self.motor_speed = erpm / scale  # rad/s
+        rpm = float(msg.data)*self.rpm_scale
+        self.motor_speed = (rpm * 2.0 * math.pi) / 60.0  # rad/s
 
     def cb_servo(self, msg):
         self.servo_pos = float(msg.data)
