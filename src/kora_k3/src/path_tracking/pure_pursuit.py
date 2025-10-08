@@ -98,13 +98,13 @@ class Pure_pursuit:
         # Create and publish the Ackermann drive message
 
         if abs(steering_angle) > 0.35:
-            velocity = 1.0
+            velocity = 1000
 
         elif abs(steering_angle) > 0.175:
-            velocity = 1.5
+            velocity = 2000
 
         else:
-            velocity = 3.0
+            velocity = 3000
 
         self.pub_move_motor_servo(velocity, steering_angle)
         self.drive_pub.publish(self.drive_msg)

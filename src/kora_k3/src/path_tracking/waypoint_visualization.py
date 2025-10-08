@@ -5,7 +5,7 @@ from visualization_msgs.msg import Marker
 from geometry_msgs.msg import Point
 
 # CSV 파일의 경로
-csv_file = '/home/tony/KORA_K3/src/kora_k3/src/path_planning/outputs/waypoints.csv'  # 파일 경로를 맞춰 설정하세요.
+csv_file = '~/KORA_K3/src/kora_k3/src/path_planning/outputs/waypoints.csv'  # 파일 경로를 맞춰 설정하세요.
 
 class WaypointVisualizer:
     def __init__(self):

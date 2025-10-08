@@ -11,9 +11,9 @@ import pandas as pd
 from pathlib import Path
 
 # ================= 사용자 설정 =================
-YAML_PATH = "/home/tony/KORA_K3/src/kora_k3/maps/f3.yaml"     # 예: "columbia.yaml"
-PGM_PATH  = "/home/tony/KORA_K3/src/kora_k3/maps/f3.pgm"      # 예: "columbia.pgm"
-OUTPUT_PREFIX = "/home/tony/KORA_K3/src/kora_k3/src/path_planning/outputs/waypoints"  # 저장 prefix
+YAML_PATH = "~/KORA_K3/src/kora_k3/maps/f3.yaml"     # 예: "columbia.yaml"
+PGM_PATH  = "~/KORA_K3/src/kora_k3/maps/f3.pgm"      # 예: "columbia.pgm"
+OUTPUT_PREFIX = "~/KORA_K3/src/kora_k3/src/path_planning/outputs/waypoints"  # 저장 prefix
 
 # 에디팅/리샘플/스무딩
 TARGET_SPACING_M = 0.20    # 균일 간격 (Pure Pursuit 0.1~0.3 권장)
