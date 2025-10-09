@@ -7,7 +7,7 @@ ENV LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 RUN apt-get update && apt-get install -y \
     tzdata locales curl gnupg2 lsb-release ca-certificates \
     iproute2 net-tools iputils-ping netcat \
-    openssh-client wget vim less git nano \
+    openssh-client wget vim less git nano pip \
     mesa-utils libgl1-mesa-glx libglu1-mesa \
     libx11-6 libxext6 libxrender1 libxrandr2 libxi6 libxinerama1 \
  && ln -fs /usr/share/zoneinfo/$TZ /etc/localtime \
@@ -22,8 +22,11 @@ RUN apt-get update && apt-get install -y \
     ros-noetic-sparse-bundle-adjustment \ 
     ros-noetic-map-server ros-noetic-map-server \
     ros-noetic-geographic-msgs ros-noetic-ackermann-msgs \
-    libgeographic-dev \
+    sudo apt install ros-noetic-amcl \ 
+    libgeographic-dev python3-tk \
  && apt-get clean && rm -rf /var/lib/apt/lists/*
+ 
+RUN python3 -m pip install --user networkx scikit-image scipy pandas 
 
 # ROS1 자동 로드(1회만)
 RUN echo "source /opt/ros/noetic/setup.bash" >> /root/.bashrc

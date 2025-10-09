@@ -18,10 +18,10 @@ class Pure_pursuit:
         self.steer_msg = Float64()
         
 
-        self.csv_file = '/root/KORA_K3/src/kora_k3/src/path_tracking/waypoints/waypoints.csv'
+        self.csv_file = '/root/KORA_K3/src/kora_k3/src/path_planning/outputs/waypoints.csv'
         self.waypoints = self.load_waypoints()
         # Parameters
-        self.lookahead_distance = 0.5  # Lookahead distance for Pure Pursuit
+        self.lookahead_distance = 0.8  # Lookahead distance for Pure Pursuit
         
 
     def base_callback(self, odom_msg):
@@ -85,15 +85,18 @@ class Pure_pursuit:
 
     def publish_drive_message(self, steering_angle):
         # Create and publish the Ackermann drive message
+        lr=0.1514
+
+        v = np.sqrt(11.2815*np.sqrt((0.325/tan(steering_angle))**2+lr))
 
         if steering_angle > 0.65 or steering_angle < 0.35:
-            velocity = 3000
+            velocity = 9000
 
         elif steering_angle > 0.875 or steering_angle < 0.175:
-            velocity = 2000
+            velocity = 7000
 
         else:
-            velocity = 5000
+            velocity = 15000
 
         self.speed_msg.data = velocity
         self.steer_msg.data = steering_angle

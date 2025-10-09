@@ -27,11 +27,13 @@ from std_msgs.msg import Float64
 from sensor_msgs.msg import Imu
 from nav_msgs.msg import Odometry
 import tf
+from tf.transformations import euler_from_quaternion
 
 
-def q_to_yaw(z, w):
-    """2D 가정(roll/pitch ≈ 0)에서 yaw = 2*atan2(z, w)"""
-    return 2.0 * math.atan2(z, w)
+def q_to_yaw(x, y, z, w):
+    """쿼터니언 전체를 사용해 yaw를 추출"""
+    _, _, yaw = euler_from_quaternion([x, y, z, w])
+    return yaw
 
 
 class WheelOdomNode(object):
@@ -90,7 +92,12 @@ class WheelOdomNode(object):
         self.delta = (self.servo_pos - self.servo_center) * (2.0 * self.max_steer_rad)
 
     def cb_imu(self, msg):
-        self.yaw_imu = q_to_yaw(float(msg.orientation.z), float(msg.orientation.w))
+        self.yaw_imu = q_to_yaw(
+            float(msg.orientation.x),
+            float(msg.orientation.y),
+            float(msg.orientation.z),
+            float(msg.orientation.w),
+        )
         self.wz_imu = float(msg.angular_velocity.z)
 
     # 타이머
