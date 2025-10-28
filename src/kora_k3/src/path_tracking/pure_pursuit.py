@@ -28,13 +28,13 @@ class Pure_pursuit:
         # 1. Find the current waypoint to track
         # 2. Transform the goal point to the vehicle frame
         goal_point = self.find_goal_point(odom_msg)
-        print(goal_point)
+        # print(goal_point)
         # 3. Calculate curvature (steering angle)
         steering_angle = self.calculate_steering_angle(goal_point) #0.5~-0.5 -> 0~1.0
         steering_angle = -(steering_angle-0.5)
-        # print(steering_angle)
+        print(steering_angle)
         # 4. Publish the drive message
-        self.publish_drive_message(steering_angle)
+        # self.publish_drive_message(steering_angle)
 
     def imu_callback(self, imu_msg):
         self.imu_msg = imu_msg

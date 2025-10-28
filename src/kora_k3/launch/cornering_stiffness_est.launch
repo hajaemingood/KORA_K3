@@ -1,0 +1,12 @@
+<launch>
+  <node pkg="kora_k3" type="cornering_stiffness_est.py" name="cornering_stiffness_est" output="screen">
+    <param name="csv_path" value="/root/KORA_K3/src/kora_k3/src/vehicle_dynamics/cornering_stiffness/ramp_steer_trial.csv"/>
+    <param name="motor_data_sp" value="6000"/>
+    <param name="rpm_per_data" value="0.025"/>
+    <param name="wheel_R_eff" value="0.05"/>
+    <param name="steer_center" value="0.5"/>
+    <param name="steer_span_deg" value="60.0"/>
+    <param name="delta_max_deg" value="4.0"/>
+    <param name="imu_topic" value="/imu/data_centered"/>
+  </node>
+</launch>
