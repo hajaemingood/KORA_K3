@@ -4,8 +4,8 @@ set -e
 # =========================================
 # 사용자 설정
 # =========================================
-BAG_PATH=${1:-"/root/KORA_K3/src/kora_k3/src/vehicle_dynamics/bagfiles/speed_10000_steer_0.0_test_1.bag"}    # 첫 번째 인자: bag 경로
-CSV_PATH=${2:-"/root/KORA_K3/src/kora_k3/src/vehicle_dynamics/data/speed_10000_steer_0.0_test_1.csv"}           # 두 번째 인자: CSV 저장 경로
+BAG_PATH=${1:-"/root/KORA_K3/src/kora_k3/src/vehicle_dynamics/bagfiles/speed_6000_steer_1.0_test_2.bag"}    # 첫 번째 인자: bag 경로
+CSV_PATH=${2:-"/root/KORA_K3/src/kora_k3/src/vehicle_dynamics/data/speed_6000_steer_1.0_test_2.csv"}           # 두 번째 인자: CSV 저장 경로
 RATE=${3:-1.0}                                # 세 번째 인자: 재생 배속
 
 # =========================================

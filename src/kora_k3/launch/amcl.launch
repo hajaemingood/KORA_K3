@@ -1,6 +1,6 @@
 <launch>
   <node pkg="map_server" type="map_server" name="map_server"
-        args="$(find kora_k3)/maps/f6.yaml" />
+        args="$(find kora_k3)/maps/f7.yaml" />
 
   <node pkg="amcl" type="amcl" name="amcl" output="screen">
     <!-- 프레임/TF -->
@@ -38,10 +38,10 @@
 
     <!-- 오도메트리 노이즈 -->
     <param name="odom_model_type" value="diff"/>
-    <param name="odom_alpha1" value="0.20"/>
-    <param name="odom_alpha2" value="0.20"/>
-    <param name="odom_alpha3" value="0.20"/>
-    <param name="odom_alpha4" value="0.20"/>
+    <param name="odom_alpha1" value="0.25"/>
+    <param name="odom_alpha2" value="0.25"/>
+    <param name="odom_alpha3" value="0.25"/>
+    <param name="odom_alpha4" value="0.25"/>
 
     <!-- 초기 자세(원하면 RViz에서 /initialpose로 덮어쓰기) -->
     <param name="initial_pose_x" value="0.0"/>

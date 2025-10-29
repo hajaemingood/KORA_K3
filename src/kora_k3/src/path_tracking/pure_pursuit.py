@@ -21,7 +21,7 @@ class Pure_pursuit:
         self.csv_file = '/root/KORA_K3/src/kora_k3/src/path_planning/outputs/waypoints.csv'
         self.waypoints = self.load_waypoints()
         # Parameters
-        self.lookahead_distance = 0.8  # Lookahead distance for Pure Pursuit
+        self.lookahead_distance = 0.8 # Lookahead distance for Pure Pursuit
         
 
     def base_callback(self, odom_msg):
@@ -34,7 +34,7 @@ class Pure_pursuit:
         steering_angle = -(steering_angle-0.5)
         print(steering_angle)
         # 4. Publish the drive message
-        # self.publish_drive_message(steering_angle)
+        self.publish_drive_message(steering_angle)
 
     def imu_callback(self, imu_msg):
         self.imu_msg = imu_msg
@@ -90,13 +90,13 @@ class Pure_pursuit:
         v = np.sqrt(11.2815*np.sqrt((0.325/tan(steering_angle))**2+lr))
 
         if steering_angle > 0.65 or steering_angle < 0.35:
-            velocity = 9000
+            velocity = 5000
 
         elif steering_angle > 0.875 or steering_angle < 0.175:
-            velocity = 7000
+            velocity = 3000
 
         else:
-            velocity = 15000
+            velocity = 7000
 
         self.speed_msg.data = velocity
         self.steer_msg.data = steering_angle

@@ -165,8 +165,9 @@ catkin_install_python(PROGRAMS
   src/path_tracking/pure_pursuit.py
   src/path_tracking/waypoint_visualization.py
   src/vehicle_dynamics/data_collection.py
-  src/vehicle_dynamics/cornering_stiffness_est.py
   src/vehicle_dynamics/data/rosbag_to_csv.py
+  src/vehicle_dynamics/c_alpha_estimation.py
+  src/vehicle_dynamics/c_alpha_fitting.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
