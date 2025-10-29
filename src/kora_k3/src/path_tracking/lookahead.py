@@ -6,7 +6,6 @@ import sys
 from math import *
 from geometry_msgs.msg import Pose2D
 from std_msgs.msg import Float64
-from sensor_msgs.msg import Imu
 
 class Pure_pursuit:
     def __init__(self):
@@ -17,7 +16,6 @@ class Pure_pursuit:
 
         self.speed_msg = Float64()
         self.steer_msg = Float64()
-        self.imu_msg = Imu()
         self.wheel_radius = 0.05  # m
         self.rpm_per_data = 0.025  # rpm/data
         self.Vx = 0
@@ -27,9 +25,9 @@ class Pure_pursuit:
         # ---- Lookahead 동적 파라미터 ----
         # Ld = L0 + k_v * |v| 를 기본으로 하고 [Lmin, Lmax]로 클램프
         self.L0   = rospy.get_param("~L0",   0.6)   # 기본 오프셋 [m]
-        self.k_v  = rospy.get_param("~k_v",  1.0)   # 속도 게인 [s]
+        self.k_v  = rospy.get_param("~k_v",  0.5)   # 속도 게인 [s]
         self.Lmin = rospy.get_param("~Lmin", 0.5)   # 최소 lookahead [m]
-        self.Lmax = rospy.get_param("~Lmax", 1.0)   # 최대 lookahead [m]
+        self.Lmax = rospy.get_param("~Lmax", 1.0)  # 최대 lookahead [m]
 
         # 저역통과용(선택): 속도 추정값
         self.v_est = 0.0
@@ -62,7 +60,7 @@ class Pure_pursuit:
 
         # 3. Calculate curvature (steering angle)
         steering_angle = self.calculate_steering_angle(goal_point)
-        steering_angle = -(steering_angle-0.5)
+        
 
         # 4. Publish the drive message
         self.publish_drive_message(steering_angle)
@@ -99,9 +97,9 @@ class Pure_pursuit:
     
     def fallback_forward_point(self, pose_msg):
         # lookahead 안에서 전방점을 못 찾았을 때 대비(가장 가까운 '앞' 점)
-        car_x = pose_msg.x  
-        car_y = pose_msg.y  
-        yaw = self.get_yaw_from_pose(pose_msg)
+        car_x = pose_msg.x                    # car x
+        car_y = pose_msg.y                    # car y
+        yaw = pose_msg.theta  
 
         best = None
         best_d = float('inf')
@@ -124,6 +122,7 @@ class Pure_pursuit:
         L = max(1e-3, self.lookahead_distance)  # 0 방지
         y = goal_point[3]
         curvature = 2.0 * y / (L * L)
+        print(curvature)
         print(self.lookahead_distance)
 
         # 조향 한계(예시)
@@ -135,17 +134,19 @@ class Pure_pursuit:
         # Create and publish the Ackermann drive message
 
         if steering_angle > 0.65 or steering_angle < 0.35:
-            velocity = 8000
+            velocity = 4000
 
         elif steering_angle > 0.875 or steering_angle < 0.175:
             velocity = 6000
 
         else:
-            velocity = 15000
+            velocity = 8000
 
-        self.Vx = velocity*self.rpm_per_data*(2.0*np.pi/60.0)*self.wheel_radius # m/s
+        weight = 0.5
 
+        self.Vx = velocity*self.rpm_per_data*(2.0*np.pi/60.0)*self.wheel_radius*weight # m/s
 
+        steering_angle = -(steering_angle-0.5)
         self.speed_msg.data = velocity
         self.steer_msg.data = steering_angle
 

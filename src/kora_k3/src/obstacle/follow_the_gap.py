@@ -3,7 +3,7 @@
 
 import rospy
 from sensor_msgs.msg import LaserScan
-from ackermann_msgs.msg import AckermannDriveStamped
+from std_msgs.msg import Float64
 from math import *
 import numpy as np
 
@@ -11,13 +11,15 @@ class Follow_the_gap:
     def __init__(self):
         rospy.init_node("follow_the_gap")
         rospy.Subscriber("/scan",LaserScan, self.lidar_CB) 
-        self.drive_pub = rospy.Publisher("/drive",AckermannDriveStamped, queue_size=10) 
-        self.scan_msg = LaserScan()
-        self.drive_msg = AckermannDriveStamped()
+        self.motor_pub = rospy.Publisher('/commands/motor/speed', Float64, queue_size=1)
+        self.servo_pub = rospy.Publisher('/commands/servo/position', Float64, queue_size=1) 
+
+        self.speed_msg = Float64()
+        self.steer_msg = Float64()
      
     def lidar_CB(self,msg):
-        self.scan_msg= msg
-        
+        self.scan_msg = msg
+    
         angle_ranges , proc_ranges = self.preprocess_lidar(self.scan_msg)
         start_idx, end_idx = self.find_max_gap(proc_ranges)
         # print(start_idx)
@@ -26,7 +28,7 @@ class Follow_the_gap:
         print(angle_ranges[end_idx]*180/pi)
         print("-------------")
 
-        theta =self.calculate_angle(angle_ranges, proc_ranges, start_idx, end_idx)
+        theta = self.calculate_angle(angle_ranges, proc_ranges, start_idx, end_idx)
         self.control(theta)
 
     def preprocess_lidar(self, scan_msg):
@@ -38,12 +40,13 @@ class Follow_the_gap:
         ranges = np.convolve(ranges, np.ones(mvg_window), 'valid') / (mvg_window)
         
         ranges[np.isinf(ranges) |
-               (ranges > scan_msg.range_max)] = 3
+               (ranges > scan_msg.range_max)] = 10
 
-        angle_ranges = np.arange(len(ranges_raw))*scan_msg.angle_increment - pi
-
+        angle_ranges = np.arange(len(ranges_raw))*scan_msg.angle_increment -3*pi/4
         proc_ranges = ranges[(angle_ranges >= -75/180*pi) & (angle_ranges <= 75/180*pi)]
         angle_ranges = angle_ranges[(angle_ranges >= -75/180*pi) & (angle_ranges <= 75/180*pi)]
+        # print(proc_ranges[len(proc_ranges)//4])
+        # print('--------------')
 
         return angle_ranges, proc_ranges
     
@@ -57,7 +60,7 @@ class Follow_the_gap:
         max_length = 0
         curr_length = 0
         curr_idx = 0
-        threshold = 1 # 1.5m보다 멀리 있다면 빈공간
+        threshold = 0.6 # 1.5m보다 멀리 있다면 빈공간
         for k in range(len(free_space_ranges)):
             if free_space_ranges[k] > threshold:
                 curr_length +=1
@@ -89,6 +92,8 @@ class Follow_the_gap:
 
         d1 = proc_ranges[start_idx]
         d2 = proc_ranges[end_idx]
+        print(d1)
+        print(d2)
         phi1 = abs(angle_ranges[start_idx])
         phi2 = abs(angle_ranges[end_idx])
 
@@ -105,15 +110,19 @@ class Follow_the_gap:
             theta = 0.5
 
         if abs(theta) > 0.35:
-            velocity = 1.0
+            motor_speed = 5000
         elif abs(theta) > 0.175:
-            velocity = 1.5
+            motor_speed = 7000
         else:
-            velocity = 3.0
+            motor_speed = 9000
 
-        self.drive_msg.drive.steering_angle = theta
-        self.drive_msg.drive.speed = velocity
-        self.drive_pub.publish(self.drive_msg)
+        steering_angle = -(theta-0.5)
+        self.speed_msg.data = motor_speed
+        self.steer_msg.data = steering_angle
+        # print(steering_angle)
+
+        self.motor_pub.publish(self.speed_msg)
+        self.servo_pub.publish(self.steer_msg)
 
 
 def main():

@@ -1,6 +1,6 @@
 <launch>
   <node pkg="map_server" type="map_server" name="map_server"
-        args="$(find kora_k3)/maps/f7.yaml" />
+        args="$(find kora_k3)/maps/f8.yaml" />
 
   <node pkg="amcl" type="amcl" name="amcl" output="screen">
     <!-- 프레임/TF -->
