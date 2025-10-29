@@ -9,7 +9,7 @@
   <!-- ========================= -->
   <!-- (3) Pure Pursuit 관련 노드 -->
   <!-- ========================= -->
-  <node pkg="kora_k3" type="pure_pursuit.py"
+  <node pkg="kora_k3" type="lookahead.py"
         name="pure_pursuit_node" output="screen" />
 
   <node pkg="kora_k3" type="base_link_pub.py"
