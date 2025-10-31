@@ -96,7 +96,7 @@ class Pure_pursuit:
             velocity = 3000
 
         else:
-            velocity = 7000
+            velocity = 8000
 
         self.speed_msg.data = velocity
         self.steer_msg.data = steering_angle

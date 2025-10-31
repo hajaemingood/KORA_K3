@@ -23,7 +23,7 @@ RUN apt-get update && apt-get install -y \
     ros-noetic-map-server ros-noetic-map-server \
     ros-noetic-geographic-msgs ros-noetic-ackermann-msgs \
     sudo apt install ros-noetic-amcl \ 
-    libgeographic-dev python3-tk \
+    libgeographic-dev python3-tk python3-shapely \   
  && apt-get clean && rm -rf /var/lib/apt/lists/*
  
 RUN python3 -m pip install --user networkx scikit-image scipy pandas 

@@ -2,34 +2,40 @@
 #-*- coding: utf-8 -*-
 
 import rospy
-from sensor_msgs.msg import LaserScan
+# from sensor_msgs.msg import LaserScan
 from std_msgs.msg import Float64
 from math import *
 import numpy as np
 
+import sys
+import os
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.abspath(os.path.join(current_dir, '..'))  # drive_controller 상위 폴더
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
+
 class Follow_the_gap:
-    def __init__(self):
-        rospy.init_node("follow_the_gap")
-        rospy.Subscriber("/scan",LaserScan, self.lidar_CB) 
-        self.motor_pub = rospy.Publisher('/commands/motor/speed', Float64, queue_size=1)
-        self.servo_pub = rospy.Publisher('/commands/servo/position', Float64, queue_size=1) 
+    def __init__(self, init_node: bool = False):
+        if init_node:
+            rospy.init_node("follow_the_gap")
+            #rospy.Subscriber("/scan", LaserScan, self._subscriber_callback)
+        self.last_min_distance = float('inf')
+        self._threshold = None
 
-        self.speed_msg = Float64()
-        self.steer_msg = Float64()
-     
-    def lidar_CB(self,msg):
-        self.scan_msg = msg
-    
-        angle_ranges , proc_ranges = self.preprocess_lidar(self.scan_msg)
-        start_idx, end_idx = self.find_max_gap(proc_ranges)
-        # print(start_idx)
-        # print(end_idx)
-        print(angle_ranges[start_idx]*180/pi)
-        print(angle_ranges[end_idx]*180/pi)
-        print("-------------")
+    # def _subscriber_callback(self, msg):
+    #     """ROS subscriber entrypoint when the class owns the subscriber."""
+    #     if self._threshold is None:
+    #         rospy.logwarn_once("Follow_the_gap: threshold not set; skipping callback")
+    #         return
+    #     self.lidar_CB(msg, self._threshold)
 
-        theta = self.calculate_angle(angle_ranges, proc_ranges, start_idx, end_idx)
-        self.control(theta)
+    def lidar_CB(self, angle_ranges, dist_ranges, threshold):
+        """Process a LaserScan and return steering angle command (radians)."""
+        self._threshold = threshold
+        start_idx, end_idx = self.find_max_gap(dist_ranges, threshold)
+        theta = self.calculate_angle(angle_ranges, dist_ranges, start_idx, end_idx)
+        return theta
 
     def preprocess_lidar(self, scan_msg):
         ranges_raw = np.array(scan_msg.ranges)
@@ -50,7 +56,7 @@ class Follow_the_gap:
 
         return angle_ranges, proc_ranges
     
-    def find_max_gap(self, free_space_ranges):
+    def find_max_gap(self, free_space_ranges, threshold):
         """ Return the start index & end index of the max gap in free_space_ranges
 
         The max gap should not include nan 
@@ -60,7 +66,7 @@ class Follow_the_gap:
         max_length = 0
         curr_length = 0
         curr_idx = 0
-        threshold = 0.6 # 1.5m보다 멀리 있다면 빈공간
+        # threshold = 0.6 # 1.5m보다 멀리 있다면 빈공간
         for k in range(len(free_space_ranges)):
             if free_space_ranges[k] > threshold:
                 curr_length +=1
@@ -78,6 +84,9 @@ class Follow_the_gap:
             max_length = curr_length
             start_idx = curr_idx
 
+        if max_length == 0:
+            return None, None
+
         return start_idx, start_idx + max_length - 1
     
     def calculate_angle(self, angle_ranges, proc_ranges, start_idx, end_idx):
@@ -92,45 +101,49 @@ class Follow_the_gap:
 
         d1 = proc_ranges[start_idx]
         d2 = proc_ranges[end_idx]
-        print(d1)
-        print(d2)
         phi1 = abs(angle_ranges[start_idx])
         phi2 = abs(angle_ranges[end_idx])
 
         theta = acos((d1+d2*cos(phi1+phi2)) / sqrt(d1**2+d2**2+2*d1*d2*cos(phi1+phi2))) - phi1
         # h = sqrt(d1**2+d2**2+2*d1*d2*cos(phi1+phi2))/2
+        return theta
 
-        return theta 
-
-    def control(self, theta):
+    def gap_control(self, theta):
         
         if theta < -0.5:
             theta = -0.5
         elif theta > 0.5:
             theta = 0.5
 
-        if abs(theta) > 0.35:
-            motor_speed = 5000
-        elif abs(theta) > 0.175:
-            motor_speed = 7000
-        else:
-            motor_speed = 9000
+        # if abs(theta) > 0.35:
+        #     motor_speed = 5000
+        # elif abs(theta) > 0.175:
+        #     motor_speed = 7000
+        # else:
+        #     motor_speed = 10000
+
+        velocity = 8000  # 초기 속도
+        velocity_unit = 1000  # 단위 (1000)
+        steering_step = 0.1  # 단위 (0.1)
+        velocity = velocity - (abs(steering_angle) / steering_step) * velocity_unit 
 
         steering_angle = -(theta-0.5)
-        self.speed_msg.data = motor_speed
-        self.steer_msg.data = steering_angle
+        
+        return steering_angle, velocity
+        #self.speed_msg.data = motor_speed
+        #self.steer_msg.data = steering_angle
         # print(steering_angle)
 
-        self.motor_pub.publish(self.speed_msg)
-        self.servo_pub.publish(self.steer_msg)
+        #self.motor_pub.publish(self.speed_msg)
+        #self.servo_pub.publish(self.steer_msg)
 
 
-def main():
-    try:
-        follow_the_gap = Follow_the_gap()
-        rospy.spin()
-    except rospy.ROSInterruptException:
-        pass
+# def main():
+#     try:
+#         follow_the_gap = Follow_the_gap()
+#         rospy.spin()
+#     except rospy.ROSInterruptException:
+#         pass
 
-if __name__=="__main__":
-    main()
+# if __name__=="__main__":
+#     main()
