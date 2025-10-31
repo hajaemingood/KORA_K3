@@ -37,3 +37,9 @@ class PIDController:
 
         output = self.Kp * error + self.Ki * self.integral + self.Kd * derivative
         return output
+
+    def reset(self):
+        """적분/미분 상태 초기화."""
+        self.prev_error = 0.0
+        self.integral = 0.0
+        self.last_time = time()

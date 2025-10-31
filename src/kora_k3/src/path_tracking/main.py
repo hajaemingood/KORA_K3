@@ -15,6 +15,7 @@ from geometry_msgs.msg import Pose2D
 from std_msgs.msg import Float64
 from obstacle.follow_the_gap import Follow_the_gap
 from path_tracking.lookahead import Pure_pursuit
+from path_tracking.PID_control import PIDController
 import numpy as np
 
 class Controller:
@@ -24,10 +25,27 @@ class Controller:
         self.servo_pub = rospy.Publisher('/commands/servo/position', Float64, queue_size=1)
         self.follow_gap = Follow_the_gap()
         self.pure_pursuit = Pure_pursuit()
-        self.gap_threshold = 0.4 # lidar detection range (m)
+        self.gap_threshold = 0.7 # lidar detection range (m)
 
         self.scan_msg = None
         self.pose_msg = None
+
+        # PID controllers (통합 제어)
+        self.steer_pid = PIDController(Kp=0.4, Ki=0.0, Kd=0.12)
+        self.speed_pid = PIDController(Kp=20.0, Ki=5.0, Kd=20.0)
+        self.current_mode = "pure_pursuit"
+
+        # 속도 변환 파라미터
+        self.speed_cmd_limits = (5000, 15000)
+        self.speed_weight = 0.5
+        self.rpm_per_data = 0.025
+        self.wheel_radius = 0.05
+        self.speed_gain = (
+            self.rpm_per_data * (2.0 * np.pi / 60.0) * self.wheel_radius * self.speed_weight
+        )
+        self.speed_alpha = 0.3
+        self.speed_est = 0.0
+        self.last_speed_cmd = self.speed_cmd_limits[0]
 
         rospy.Subscriber("/scan", LaserScan, self.scan_callback, queue_size=1)
         rospy.Subscriber("/base_link_pose", Pose2D, self.pose_callback, queue_size=1)
@@ -49,32 +67,79 @@ class Controller:
         self.servo_pub.publish(steer_msg)
 
     def compute_min_distance(self, scan_msg):
-        # if scan_msg is None:
-        #     return float('inf')
-        # valid_ranges = [r for r in scan_msg.ranges if not isinf(r) and not isnan(r)]
-        # if not valid_ranges:
-        #     return float('inf')
-        # return min(valid_ranges)
+        if scan_msg is None:
+            return float('inf'), None, None
         angle_ranges, dist_ranges = self.follow_gap.preprocess_lidar(scan_msg)
         valid_ranges = dist_ranges[np.isfinite(dist_ranges)]
         if valid_ranges.size:
             return float(valid_ranges.min()), angle_ranges, dist_ranges
         else:
             return float('inf'), angle_ranges, dist_ranges
-        
+
+    def command_to_mps(self, command):
+        return command * self.speed_gain
+
+    def mps_to_command(self, speed_mps):
+        if self.speed_gain <= 1e-6:
+            return self.speed_cmd_limits[0]
+        return speed_mps / self.speed_gain
+
+    def to_servo_angle(self, steer_rad):
+        return -(steer_rad - 0.5)
 
     def control_loop(self, _event):
-        min_distance,angle_ranges, dist_ranges = self.compute_min_distance(self.scan_msg)
-        print(f"min distance: {min_distance:.2f} m")
-        if min_distance <= self.gap_threshold:
-            theta = self.follow_gap.lidar_CB(angle_ranges, dist_ranges, self.gap_threshold)
-            steer, speed = self.follow_gap.gap_control(theta)
-            print("follow the gap")
-        else:
-            steer, speed = self.pure_pursuit.compute_control(self.pose_msg)
-            print("pure pursuit")
+        if self.scan_msg is None or self.pose_msg is None:
+            return
 
-        self.pub_motor(speed, steer)
+        min_distance, angle_ranges, dist_ranges = self.compute_min_distance(self.scan_msg)
+        steer_err = 0.0
+        target_speed = self.pure_pursuit.target_speed
+        mode = "pure_pursuit"
+        #print(mode)
+
+        if min_distance <= self.gap_threshold and angle_ranges is not None:
+            theta_err, safe_speed = self.follow_gap.compute_errors(
+                angle_ranges, dist_ranges, self.gap_threshold
+            )
+            steer_err = theta_err if theta_err is not None else 0.0
+            target_speed = min(target_speed, safe_speed)
+            mode = "gap_follow"
+            #print(mode)
+        else:
+            steer_err, cruise_speed = self.pure_pursuit.compute_errors(
+                self.pose_msg, current_speed=self.speed_est
+            )
+            if steer_err is None:
+                return
+            target_speed = cruise_speed
+
+        if mode != self.current_mode:
+            self.steer_pid.reset()
+            self.speed_pid.reset()
+            self.current_mode = mode
+
+        steer_cmd = float(np.clip(self.steer_pid.compute(steer_err), -0.5, 0.5))
+        servo_position = self.to_servo_angle(steer_cmd)
+
+        current_speed = self.speed_est
+        speed_error = target_speed - current_speed
+        delta_command = self.speed_pid.compute(speed_error)
+        base_command = self.mps_to_command(target_speed)
+        speed_command = base_command + delta_command
+        speed_command = float(np.clip(speed_command, *self.speed_cmd_limits))
+
+        commanded_speed_mps = self.command_to_mps(speed_command)
+        self.speed_est = (
+            (1.0 - self.speed_alpha) * self.speed_est + self.speed_alpha * commanded_speed_mps
+        )
+        self.last_speed_cmd = speed_command
+
+        # print(
+        #     f"mode={mode}, min_dist={min_distance:.2f}m, steer_err={steer_err:.3f}rad, "
+        #     f"target_speed={target_speed:.2f}m/s, cmd_speed={speed_command:.0f}"
+        # )
+
+        self.pub_motor(speed_command, servo_position)
 
 def main():
     try:
