@@ -1,6 +1,12 @@
 <launch>
-  <node pkg="map_server" type="map_server" name="map_server"
-        args="$(find kora_k3)/maps/f6.yaml" />
+  <arg name="map_file" default="$(find kora_k3)/maps/f8.yaml"/>
+  <arg name="launch_rviz" default="true"/>
+  <arg name="start_map_server" default="true"/>
+
+  <group if="$(arg start_map_server)">
+    <node pkg="map_server" type="map_server" name="map_server"
+          args="$(arg map_file)" />
+  </group>
 
   <node pkg="amcl" type="amcl" name="amcl" output="screen">
     <!-- 프레임/TF -->
@@ -38,20 +44,22 @@
 
     <!-- 오도메트리 노이즈 -->
     <param name="odom_model_type" value="diff"/>
-    <param name="odom_alpha1" value="0.20"/>
-    <param name="odom_alpha2" value="0.20"/>
-    <param name="odom_alpha3" value="0.20"/>
-    <param name="odom_alpha4" value="0.20"/>
+    <param name="odom_alpha1" value="0.25"/>
+    <param name="odom_alpha2" value="0.25"/>
+    <param name="odom_alpha3" value="0.25"/>
+    <param name="odom_alpha4" value="0.25"/>
 
     <!-- 초기 자세(원하면 RViz에서 /initialpose로 덮어쓰기) -->
     <param name="initial_pose_x" value="0.0"/>
     <param name="initial_pose_y" value="0.0"/>
-    <param name="initial_pose_a" value="0.0"/>
+    <param name="initial_pose_a" value="-1.65"/>
     <param name="initial_cov_xx" value="0.25"/>
     <param name="initial_cov_yy" value="0.25"/>
     <param name="initial_cov_aa" value="0.0685"/>
   </node>
 
-  <node pkg="rviz" type="rviz" name="rviz"
-        args="-d $(find kora_k3)/config/localization.rviz" output="screen"/>
+  <group if="$(arg launch_rviz)">
+    <node pkg="rviz" type="rviz" name="rviz"
+          args="-d $(find kora_k3)/config/localization.rviz" output="screen"/>
+  </group>
 </launch>

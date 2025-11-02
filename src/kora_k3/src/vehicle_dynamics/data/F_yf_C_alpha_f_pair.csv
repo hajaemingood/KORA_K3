@@ -1,0 +1,20 @@
+type,alpha_f,F_yf,
+speed_3000_steer_0_test_1,1.815,0.050
+speed_3000_steer_0_test_2,2.525,0.004
+speed_3000_steer_0.3_test_1,1.931,-0.228
+speed_3000_steer_0.3_test_2,1.828,-0.270
+speed_3000_steer_0.7_test_1,1.122, 0.002
+speed_3000_steer_0.7_test_2,1.115,-0.457
+speed_3000_steer_1.0_test_1,0.074,-0.503
+speed_3000_steer_1.0_test_2,0.524,-0.025
+speed_6000_steer_0_test_1,2.618,1.178
+speed_6000_steer_0_test_2,-0.523,1.706
+speed_6000_steer_0.3_test_1,1.619,0.558
+speed_6000_steer_0.3_test_2,-1.152,0.767
+speed_6000_steer_0.7_test_1,1.152,-0.938
+speed_6000_steer_0.7_test_2,1.152,-0.938
+speed_6000_steer_1.0_test_1,-2.618,-1.433
+speed_6000_steer_1.0_test_2,-2.618,-3.850
+speed_10000_steer_0.0_test_1,2.373,3.831
+speed_10000_steer_0.0_test_2,2.293,4.052
+speed_10000_steer_1.0_test_1,0.524,-3.984

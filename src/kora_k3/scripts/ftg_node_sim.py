@@ -17,7 +17,7 @@ class FollowTheGapNode:
         self.drive_topic = rospy.get_param("~drive_topic", "/drive")
         self.max_scan_range = rospy.get_param("~max_scan_range", 12.0)
         self.conv_window = rospy.get_param("~smoothing_window", 5)
-        self.bubble_points = rospy.get_param("~bubble_num_points", 22)
+        self.bubble_points = rospy.get_param("~bubble_num_points", 10)
         self.obstacle_threshold = rospy.get_param("~obstacle_threshold", 1.0)
         self.max_steering_angle = rospy.get_param("~max_steering_angle", 0.34)
         self.max_speed = rospy.get_param("~max_speed", 3.0)
@@ -34,11 +34,12 @@ class FollowTheGapNode:
         self.gap_width_weight = rospy.get_param("~gap_width_weight", 0.25)
         self.gap_alignment_weight = rospy.get_param("~gap_alignment_weight", 1.6)
         self.path_alignment_weight = rospy.get_param("~path_alignment_weight", 1.4)
+        self.wall_cluster_threshold = rospy.get_param("~wall_cluster_threshold", 80)
         self.use_path_blending = rospy.get_param("~use_path_blending", True)
         self.path_drive_topic = rospy.get_param("~path_drive_topic", "/pure_pursuit/drive")
         self.path_timeout = rospy.get_param("~path_command_timeout", 0.5)
-        self.blend_activate_distance = rospy.get_param("~blend_activate_distance", 2.0)
-        self.blend_full_distance = rospy.get_param("~blend_full_distance", 0.9)
+        self.blend_activate_distance = rospy.get_param("~blend_activate_distance", 1.5)
+        self.blend_full_distance = rospy.get_param("~blend_full_distance", 0.8)
         self.turn_blend_scale = rospy.get_param("~turn_blend_scale", 0.15)
         self.path_heading_window = rospy.get_param("~path_heading_window", 0.8)
 
@@ -49,6 +50,10 @@ class FollowTheGapNode:
         self.scan_angles = None
         self.last_path_cmd: Optional[AckermannDriveStamped] = None
         self.last_path_time = rospy.Time(0)
+        self.avoid_active = False
+        self.avoid_start_time = rospy.Time(0)
+        self.avoid_dir = 0
+        self.avoid_duration = rospy.get_param('~avoid_duration', 5)
 
         # pub / sub
         self.drive_pub = rospy.Publisher(
@@ -92,10 +97,67 @@ class FollowTheGapNode:
         front_distance = self._front_distance(processed)
         constrained = self._apply_forward_window(processed, front_distance)
         bubble_masked = self._mask_bubble(constrained)
+
+        if self._detect_obstacle_clusters(processed):
+            self._follow_path_only(front_distance)
+            return
+
         gaps = self._extract_gaps(bubble_masked)
+
+        if self.avoid_active:
+            elapsed = (rospy.Time.now() - self.avoid_start_time).to_sec()
+            if elapsed < self.avoid_duration:
+                steering = self.avoid_dir * 0.5
+                speed = self.creep_speed
+                rospy.loginfo_throttle(0.5, f"[FTG] Maintaining avoidance ({self.avoid_dir:+}) for {elapsed:.1f}s")
+                self.publish_drive(speed, steering)
+                return
+            else:
+                self.avoid_active = False
+                self.avoid_cooldown_start = rospy.Time.now()
+                self.avoid_cooldown_duration = 6.0
+                self.avoid_cooldown_dir = self.avoid_dir
+
+        if hasattr(self, 'avoid_cooldown_start'):
+            cooldown_elapsed = (rospy.Time.now() - self.avoid_cooldown_start).to_sec()
+            if cooldown_elapsed < self.avoid_cooldown_duration:
+                steering = self.avoid_cooldown_dir * 0.25
+                speed = self.collision_brake_speed
+                rospy.loginfo_throttle(0.5, f"[FTG] Cooldown steering ({self.avoid_cooldown_dir:+}) for {cooldown_elapsed:.1f}s")
+                self.publish_drive(speed, steering)
+                return
+            else:
+                del self.avoid_cooldown_start
+
+        total_points = len(bubble_masked)
+        if len(gaps) == 1 and gaps[0][0] == 0 and gaps[0][1] == total_points - 1:
+            if front_distance < self.front_brake_distance:
+                if not self.avoid_active:
+                    self.avoid_dir = np.random.choice([-1, 1])
+                    self.avoid_start_time = rospy.Time.now()
+                    self.avoid_active = True
+                steering = self.avoid_dir * 0.5
+                speed = self.creep_speed
+                rospy.loginfo_throttle(1.0, '[FTG] Starting avoidance mode.')
+                self.publish_drive(speed, steering)
+                return
+
         if not gaps:
-            rospy.logwarn_throttle(2.0, "사용 가능한 gap을 찾지 못했습니다. 차량 정지.")
-            self.publish_drive(0.0, 0.0)
+            rospy.logwarn_throttle(2.0, '사용 가능한 gap을 찾지 못했습니다. 차량 저속 유지.')
+            self.publish_drive(self.creep_speed, 0.0)
+            return
+
+        if (
+            self.use_path_blending
+            and self.last_path_cmd is not None
+            and front_distance >= self.blend_activate_distance
+            and (rospy.Time.now() - self.last_path_time).to_sec() <= self.path_timeout
+        ):
+            steering = float(self.last_path_cmd.drive.steering_angle)
+            speed = float(self.last_path_cmd.drive.speed)
+            steering = max(min(steering, self.max_steering_angle), -self.max_steering_angle)
+            speed = max(min(speed, self.max_speed), self.min_speed)
+            self.publish_drive(speed, steering)
             return
 
         start, end = self._choose_gap(gaps, bubble_masked, front_distance)
@@ -203,6 +265,7 @@ class FollowTheGapNode:
         return max(min(base_angle, self.max_steering_angle), -self.max_steering_angle)
 
     def _compute_speed(self, abs_steer: float, front_distance: float) -> float:
+        """Steering 각도와 전방 거리 기반 속도 계산."""
         if abs_steer >= self.speed_drop_steer:
             base_speed = self.min_speed
         else:
@@ -210,8 +273,6 @@ class FollowTheGapNode:
             base_speed = self.max_speed - (self.max_speed - self.min_speed) * ratio
             base_speed = max(self.min_speed, min(self.max_speed, base_speed))
 
-        if front_distance < self.front_stop_distance:
-            return self.creep_speed
         if front_distance < self.front_brake_distance:
             return min(base_speed, max(self.creep_speed, self.collision_brake_speed))
         return base_speed
@@ -279,6 +340,49 @@ class FollowTheGapNode:
         diff = angles - reference
         diff = (diff + np.pi) % (2 * np.pi) - np.pi
         return diff
+
+    def _detect_obstacle_clusters(self, ranges: np.ndarray) -> bool:
+        total_points = len(ranges)
+        start_idx = int(total_points * 0.25)
+        end_idx = int(total_points * 0.75)
+
+        cluster_size = 0
+        max_cluster = 0
+        obstacle_points = 0
+        forward_points = end_idx - start_idx
+
+        for distance in ranges[start_idx:end_idx]:
+            if distance <= self.obstacle_threshold:
+                cluster_size += 1
+                obstacle_points += 1
+                max_cluster = max(max_cluster, cluster_size)
+            else:
+                cluster_size = 0
+
+        wall_ratio = obstacle_points / forward_points if forward_points > 0 else 0.0
+
+        if wall_ratio > 0.3 or max_cluster >= self.wall_cluster_threshold:
+            return True
+        return False
+
+    def _follow_path_only(self, front_distance: float) -> None:
+        if (
+            not self.use_path_blending
+            or self.last_path_cmd is None
+            or (rospy.Time.now() - self.last_path_time).to_sec() > self.path_timeout
+        ):
+            self.publish_drive(self.creep_speed, 0.0)
+            return
+        path_steer = float(self.last_path_cmd.drive.steering_angle)
+        path_speed = float(self.last_path_cmd.drive.speed)
+        path_steer = max(min(path_steer, self.max_steering_angle), -self.max_steering_angle)
+        if front_distance < self.front_stop_distance:
+            speed = self.creep_speed
+        elif front_distance < self.front_brake_distance:
+            speed = min(path_speed, max(self.creep_speed, self.collision_brake_speed))
+        else:
+            speed = max(min(path_speed, self.max_speed), self.min_speed)
+        self.publish_drive(speed, path_steer)
 
     def path_callback(self, msg: AckermannDriveStamped) -> None:
         self.last_path_cmd = msg
