@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import rospy
+import numpy as np
 import csv
 from math import cos, sin, sqrt
 from geometry_msgs.msg import Pose2D
@@ -59,12 +61,18 @@ class Pure_pursuit:
 
         return steering_error, self.target_speed
 
-        selected_point = None
-        closest_distance = float("inf")
-        fallback_point = None
-        fallback_distance = -1
+    def find_goal_point(self, odom_msg):
+        # 현재 차량 위치
+        car_x = odom_msg.x                    # car x
+        car_y = odom_msg.y                       # car y
+        yaw = odom_msg.theta                  # car yaw
 
+        # 목표 경로점 리스트 초기화
+        max_distance = -1
+        goal_point = []
+        
         for x, y in self.waypoints:
+            # 차량과 경로점 간의 거리 계산
             dx = x - car_x
             dy = y - car_y
             distance = sqrt(dx**2 + dy**2)
@@ -114,14 +122,16 @@ class Pure_pursuit:
 
 
     def load_waypoints(self):
+        """CSV 파일에서 웨이포인트를 읽어 리스트로 반환"""
         waypoints = []
-        with open(self.csv_file, "r") as file:
+        with open(self.csv_file, 'r') as file:
             reader = csv.reader(file)
-            next(reader, None)
+            next(reader)  # 헤더 건너뛰기 (필요 시)
             for row in reader:
-                if not row:
-                    continue
-                waypoints.append((float(row[0]), float(row[1])))
+                # x, y 좌표 추출
+                x = float(row[0])
+                y = float(row[1])
+                waypoints.append((x, y))
         return waypoints
 
 # def main():
