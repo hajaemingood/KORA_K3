@@ -1,56 +1,63 @@
 #!/usr/bin/env python3
 import csv
-from math import atan, cos, sin, sqrt
-
-import numpy as np
-import rospy
-from ackermann_msgs.msg import AckermannDriveStamped
-from geometry_msgs.msg import Pose2D, PoseStamped
-from std_msgs.msg import Float64
+from math import cos, sin, sqrt
+from geometry_msgs.msg import Pose2D
 
 
-class PurePursuit:
-    def __init__(self) -> None:
-        rospy.init_node("pure_pursuit_node", anonymous=True)
+class Pure_pursuit:
+    def __init__(self, init_node: bool = False):
+        if init_node:
+            rospy.init_node("pure_pursuit_node", anonymous=True)
+            rospy.Subscriber("/base_link_pose", Pose2D, self.base_callback)
 
+        # Target velocity 파라미터
+        self.target_speed = 2.5 # 기본 목표 속도
+        self.max_speed = 2.0
+        self.min_speed = 0.5
+        self.alpha = 2.0
 
-        self.motor_pub = rospy.Publisher("/commands/motor/speed", Float64, queue_size=1)
-        self.servo_pub = rospy.Publisher("/commands/servo/position", Float64, queue_size=1)
-        self.path_drive_pub = rospy.Publisher("/pure_pursuit/drive", AckermannDriveStamped, queue_size=1)
-        self.path_steer_pub = rospy.Publisher("/pure_pursuit/steering", Float64, queue_size=1)
-        self.path_speed_pub = rospy.Publisher("/pure_pursuit/speed", Float64, queue_size=1)
-
-        self.speed_msg = Float64()
-        self.steer_msg = Float64()
-
-        self.csv_file = rospy.get_param(
-            "~waypoint_file", "/root/KORA_K3/src/kora_k3/src/path_planning/outputs/waypoints.csv"
-        )
+        self.csv_file = "/root/KORA_K3/src/kora_k3/src/path_planning/outputs/waypoints.csv"
         self.waypoints = self.load_waypoints()
+        self.curvature = 0.0
 
-        # Parameters
-        self.lookahead_distance = rospy.get_param("~lookahead_distance", 0.6)
-        self.max_steering_angle = rospy.get_param("~max_steering_angle", 0.35)
-        self.wheelbase = rospy.get_param("~wheelbase", 0.325)
-        self.target_speed = rospy.get_param("~target_speed", 1.0)
+        # Lookahead 파라미터
+        self.L0 = rospy.get_param("~L0", 0.6)
+        self.k_v = rospy.get_param("~k_v", 0.5)
+        self.Lmin = rospy.get_param("~Lmin", 0.5)
+        self.Lmax = rospy.get_param("~Lmax", 1.0)
 
-        pose_topic = rospy.get_param("~pose_topic", "/gt_pose")
-        self.pose_sub = rospy.Subscriber(pose_topic, PoseStamped, self.pose_callback)
+        self.v_est = 0.0
+        self.alpha_v = rospy.get_param("~alpha_v", 0.3)
+        self.lookahead_distance = max(self.Lmin, min(self.L0, self.Lmax))
 
-    def pose_callback(self, pose_msg: PoseStamped) -> None:
-        yaw = self.quaternion_to_yaw(pose_msg.pose.orientation)
-        pose2d = Pose2D(x=pose_msg.pose.position.x, y=pose_msg.pose.position.y, theta=yaw)
-        self.base_callback(pose2d)
+    def base_callback(self, pose_msg):
+        return self.compute_errors(pose_msg)
 
-    def base_callback(self, odom_msg: Pose2D) -> None:
-        goal_point = self.find_goal_point(odom_msg)
-        steering_angle = self.calculate_steering_angle(goal_point)
-        self.publish_drive_message(steering_angle)
+    def compute_errors(self, pose_msg, current_speed=None):
+        """횡방향 오차(rad)와 목표 속도(m/s)를 계산."""
+        if pose_msg is None:
+            return None, None
+        
+        self.target_speed = (self.max_speed-self.min_speed)*np.exp(-self.alpha*abs(self.curvature))+self.min_speed
+        print(self.target_speed)
 
-    def find_goal_point(self, odom_msg: Pose2D):
-        car_x = odom_msg.x
-        car_y = odom_msg.y
-        yaw = odom_msg.theta
+        if current_speed is None:
+            current_speed = self.target_speed
+
+        self.v_est = (1.0 - self.alpha_v) * self.v_est + self.alpha_v * current_speed
+        Ld = self.L0 + self.k_v * abs(self.v_est)
+        self.lookahead_distance = max(self.Lmin, min(Ld, self.Lmax))
+
+        goal_point = self.find_goal_point(pose_msg)
+        if not goal_point:
+            goal_point = self.fallback_forward_point(pose_msg)
+        if not goal_point:
+            return None, None
+
+        steering_error = self.calculate_steering_angle(goal_point)
+        steering_error = float(np.clip(steering_error, -0.5, 0.5))
+
+        return steering_error, self.target_speed
 
         selected_point = None
         closest_distance = float("inf")
@@ -62,71 +69,49 @@ class PurePursuit:
             dy = y - car_y
             distance = sqrt(dx**2 + dy**2)
 
-            rotated_x = cos(-yaw) * dx - sin(-yaw) * dy
-            rotated_y = sin(-yaw) * dx + cos(-yaw) * dy
+            # 거리 조건을 먼저 확인 (차량 앞쪽)
+            if distance <= self.lookahead_distance:
+                # 차량 프레임에서 x축이 양수인 경우만 앞쪽으로 간주
+                rotated_x = cos(-yaw) * dx - sin(-yaw) * dy
+                rotated_y = sin(-yaw) * dx + cos(-yaw) * dy
 
-            if rotated_x > 0:
-                if distance >= self.lookahead_distance and distance < closest_distance:
-                    closest_distance = distance
-                    selected_point = (x, y, rotated_x, rotated_y, distance)
-                if distance > fallback_distance:
-                    fallback_distance = distance
-                    fallback_point = (x, y, rotated_x, rotated_y, distance)
+                if rotated_x > 0:
+                    # 가장 먼 점을 실시간으로 찾기
+                    if distance > max_distance:
+                        max_distance = distance
+                        goal_point = (x, y, rotated_x, rotated_y, distance)
 
-        if selected_point is not None:
-            return selected_point
-        if fallback_point is not None:
-            return fallback_point
+        return goal_point
+    
+    def fallback_forward_point(self, pose_msg):
+        # lookahead 안에서 전방점을 못 찾았을 때 대비(가장 가까운 '앞' 점)
+        car_x = pose_msg.x                    # car x
+        car_y = pose_msg.y                    # car y
+        yaw = pose_msg.theta  
 
-        return (
-            car_x + self.lookahead_distance * cos(yaw),
-            car_y + self.lookahead_distance * sin(yaw),
-            self.lookahead_distance,
-            0.0,
-            self.lookahead_distance,
-        )
+        best = None
+        best_d = float('inf')
+        for x, y in self.waypoints:
+            dx, dy = x - car_x, y - car_y
+            # 차량 프레임 x>0만 전방
+            fx = cos(-yaw) * dx - sin(-yaw) * dy
+            if fx <= 0:
+                continue
+            d = sqrt(dx*dx + dy*dy)
+            if d < best_d:
+                # 차량 프레임 y도 함께 저장
+                fy = sin(-yaw) * dx + cos(-yaw) * dy
+                best = (x, y, fx, fy, d)
+                best_d = d
+        return best 
 
-    def calculate_steering_angle(self, goal_point) -> float:
-        lookahead = max(goal_point[4], 1e-3)
-        y = goal_point[3]
-        curvature = 2 * y / (lookahead**2)
-        steering_angle = atan(self.wheelbase * curvature)
-        return max(min(steering_angle, self.max_steering_angle), -self.max_steering_angle)
+    def calculate_steering_angle(self, goal_point):
+        # Pure Pursuit: curvature = 2*y / L^2  (여기서 y는 차량 프레임에서의 lateral)
+        L = max(1e-3, self.lookahead_distance)  # 0 방지
+        y_err = goal_point[3]
+        self.curvature = 2.0 * y_err / (L * L)
+        return self.curvature
 
-    def publish_drive_message(self, steering_angle: float) -> None:
-        abs_angle = abs(steering_angle)
-        if abs_angle > 0.45:
-            velocity = 2000
-        elif abs_angle > 0.25:
-            velocity = 3000
-        else:
-            velocity = 3500
-
-        if self.max_steering_angle > 1e-6:
-            servo_command = -steering_angle / (2 * self.max_steering_angle) + 0.5
-        else:
-            servo_command = 0.5
-        servo_command = max(min(servo_command, 1.0), 0.0)
-
-        self.speed_msg.data = velocity
-        self.steer_msg.data = servo_command
-
-        self.motor_pub.publish(self.speed_msg)
-        self.servo_pub.publish(self.steer_msg)
-
-        drive_msg = AckermannDriveStamped()
-        drive_msg.header.stamp = rospy.Time.now()
-        drive_msg.drive.steering_angle = steering_angle
-        drive_msg.drive.speed = self.target_speed
-        self.path_drive_pub.publish(drive_msg)
-        self.path_steer_pub.publish(self.steer_msg)
-        self.path_speed_pub.publish(Float64(data=drive_msg.drive.speed))
-
-    @staticmethod
-    def quaternion_to_yaw(orientation_q) -> float:
-        siny_cosp = 2 * (orientation_q.w * orientation_q.z + orientation_q.x * orientation_q.y)
-        cosy_cosp = 1 - 2 * (orientation_q.y**2 + orientation_q.z**2)
-        return np.arctan2(siny_cosp, cosy_cosp)
 
     def load_waypoints(self):
         waypoints = []
@@ -139,14 +124,12 @@ class PurePursuit:
                 waypoints.append((float(row[0]), float(row[1])))
         return waypoints
 
+# def main():
+#     try:
+#         pure_pursuit = Pure_pursuit()
+#         rospy.spin()
+#     except rospy.ROSInterruptException:
+#         pass
 
-def main() -> None:
-    try:
-        PurePursuit()
-        rospy.spin()
-    except rospy.ROSInterruptException:
-        pass
-
-
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()

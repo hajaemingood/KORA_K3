@@ -1,12 +1,6 @@
 <launch>
-  <arg name="map_file" default="$(find kora_k3)/maps/f8.yaml"/>
-  <arg name="launch_rviz" default="true"/>
-  <arg name="start_map_server" default="true"/>
-
-  <group if="$(arg start_map_server)">
-    <node pkg="map_server" type="map_server" name="map_server"
-          args="$(arg map_file)" />
-  </group>
+  <node pkg="map_server" type="map_server" name="map_server"
+        args="$(find kora_k3)/maps/f11.yaml" />
 
   <node pkg="amcl" type="amcl" name="amcl" output="screen">
     <!-- 프레임/TF -->
