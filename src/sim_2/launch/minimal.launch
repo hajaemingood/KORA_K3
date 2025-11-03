@@ -1,0 +1,38 @@
+<launch>
+  <arg name="initial_x" default="0.0"/>
+  <arg name="initial_y" default="0.0"/>
+  <arg name="initial_yaw" default="0.0"/>
+  <arg name="scan_count" default="360"/>
+  <arg name="map_file" default=""/>
+  <arg name="publish_dummy_map" default="$(eval map_file == '')"/>
+  <arg name="start_bridge" default="true"/>
+
+  <node pkg="sim_2" type="minimal_sim.py" name="sim2_minimal" output="screen">
+    <param name="initial_x" value="$(arg initial_x)"/>
+    <param name="initial_y" value="$(arg initial_y)"/>
+    <param name="initial_yaw" value="$(arg initial_yaw)"/>
+    <param name="pose_topic" value="/sim2/pose"/>
+    <param name="gt_pose_topic" value="/gt_pose"/>
+    <param name="odom_topic" value="/sim2/odom"/>
+    <param name="scan_topic" value="/sim2/scan"/>
+    <param name="scan_count" value="$(arg scan_count)"/>
+    <param name="publish_dummy_map" value="$(arg publish_dummy_map)"/>
+  </node>
+
+  <group if="$(arg start_bridge)">
+    <node pkg="sim_2" type="cmd_bridge.py" name="sim2_cmd_bridge" output="screen">
+      <param name="wheelbase" value="0.33"/>
+      <param name="max_speed_mps" value="5.0"/>
+      <param name="max_steer_rad" value="0.5"/>
+      <param name="servo_center" value="0.5"/>
+      <param name="motor_scale" value="0.0001"/>
+    </node>
+  </group>
+
+  <node pkg="tf2_ros" type="static_transform_publisher" name="sim2_map_to_odom_tf"
+        args="0 0 0 0 0 0 map odom"/>
+
+  <group if="$(eval map_file != '')">
+    <node pkg="map_server" type="map_server" name="sim2_map_server" args="$(arg map_file)"/>
+  </group>
+</launch>

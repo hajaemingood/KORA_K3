@@ -1,0 +1,37 @@
+<launch>
+  <arg name="initial_x" default="0.0"/>
+  <arg name="initial_y" default="0.0"/>
+  <arg name="initial_yaw" default="0.0"/>
+  <arg name="start_bridge" default="true"/>
+  <arg name="map_file" default=""/>
+  <arg name="publish_map_tf" default="true"/>
+  <arg name="scan_topic" default="/scan"/>
+  <arg name="scan_frame" default="laser"/>
+
+  <!-- Core simulator: pose/odom/TF -->
+  <node pkg="sim_3" type="minimal_sim.py" name="sim3_minimal" output="screen">
+    <param name="initial_x" value="$(arg initial_x)"/>
+    <param name="initial_y" value="$(arg initial_y)"/>
+    <param name="initial_yaw" value="$(arg initial_yaw)"/>
+    <param name="pose_topic" value="/sim3/pose"/>
+    <param name="gt_pose_topic" value="/gt_pose"/>
+    <param name="odom_topic" value="/sim3/odom"/>
+    <param name="scan_topic" value="$(arg scan_topic)"/>
+    <param name="scan_frame" value="$(arg scan_frame)"/>
+    <param name="publish_map_tf" value="$(arg publish_map_tf)"/>
+  </node>
+
+  <!-- Optional map server -->
+  <node pkg="map_server" type="map_server" name="sim3_map_server" args="$(arg map_file)" if="$(eval map_file != '')" output="log"/>
+
+  <!-- Command bridge (optional) -->
+  <group if="$(arg start_bridge)">
+    <node pkg="sim_3" type="cmd_bridge.py" name="sim3_cmd_bridge" output="screen">
+      <param name="wheelbase" value="0.33"/>
+      <param name="max_speed_mps" value="5.0"/>
+      <param name="max_steer_rad" value="0.5"/>
+      <param name="servo_center" value="0.5"/>
+      <param name="motor_scale" value="0.0001"/>
+    </node>
+  </group>
+</launch>
