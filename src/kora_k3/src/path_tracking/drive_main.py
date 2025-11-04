@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 #-*- coding: utf-8 -*-
 import os
+import select
+import subprocess
 import sys
+import termios
+import threading
+import tty
 
 # Ensure local packages resolve when launched via the catkin relay script.
 PACKAGE_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -37,7 +42,7 @@ class Controller:
         self.current_mode = "pure_pursuit"
 
         # 속도 변환 파라미터
-        self.speed_cmd_limits = (0.5*self.transfer , 2.0*self.transfer) # 0.13 m/s per 1000
+        self.speed_cmd_limits = (0.5*self.transfer , 1*self.transfer) # 0.13 m/s per 1000
         self.speed_weight = 0.5
         self.rpm_per_data = 0.025
         self.wheel_radius = 0.05
@@ -52,6 +57,7 @@ class Controller:
         rospy.Subscriber("/base_link_pose", Pose2D, self.pose_callback, queue_size=1)
 
         self.control_timer = rospy.Timer(rospy.Duration(0.05), self.control_loop)
+        self._start_keyboard_listener()
 
     def scan_callback(self, scan_msg):
         self.scan_msg = scan_msg
@@ -96,7 +102,7 @@ class Controller:
         steer_err = 0.0
         target_speed = self.pure_pursuit.target_speed
         mode = "pure_pursuit"
-        #print(mode)
+        print(mode)
 
         if min_distance <= self.gap_threshold and angle_ranges is not None:
             theta_err, safe_speed = self.follow_gap.compute_errors(
@@ -105,7 +111,7 @@ class Controller:
             steer_err = theta_err if theta_err is not None else 0.0
             target_speed = min(target_speed, safe_speed)
             mode = "gap_follow"
-            #print(mode)
+            print(mode)
         else:
             steer_err, cruise_speed = self.pure_pursuit.compute_errors(
                 self.pose_msg, current_speed=self.speed_est
@@ -141,6 +147,58 @@ class Controller:
         # )
 
         self.pub_motor(speed_command, servo_position)
+
+    def _start_keyboard_listener(self):
+        thread = threading.Thread(target=self._keyboard_listener, daemon=True)
+        thread.start()
+        self._keyboard_thread = thread
+
+    def _keyboard_listener(self):
+        if not sys.stdin.isatty():
+            rospy.logwarn("stdin is not a TTY; 'q' shortcut disabled.")
+            return
+
+        fd = sys.stdin.fileno()
+        old_settings = None
+
+        shutdown_requested = False
+
+        try:
+            old_settings = termios.tcgetattr(fd)
+            tty.setcbreak(fd)
+            rospy.loginfo("Press 'q' to shut down all ROS nodes.")
+
+            while not rospy.is_shutdown():
+                rlist, _, _ = select.select([sys.stdin], [], [], 0.1)
+                if not rlist:
+                    continue
+
+                ch = sys.stdin.read(1)
+                if not ch:
+                    rospy.logdebug("stdin closed; stopping keyboard listener.")
+                    return
+
+                if ch.lower() == 'q':
+                    rospy.logwarn("Detected 'q'. Killing /vesc_driver_node.")
+                    shutdown_requested = True
+                    break
+
+        except Exception as exc:
+            rospy.logwarn(f"Keyboard listener stopped: {exc}")
+        finally:
+            if old_settings is not None:
+                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
+        if shutdown_requested:
+            self._kill_vesc_node()
+
+    def _kill_vesc_node(self):
+        try:
+            subprocess.check_call(["rosnode", "kill", "/vesc_driver_node"])
+        except (subprocess.CalledProcessError, OSError) as exc:
+            rospy.logerr(f"Failed to kill /vesc_driver_node: {exc}")
+        finally:
+            rospy.signal_shutdown("Shutdown requested by keyboard input.")
 
 def main():
     try:
