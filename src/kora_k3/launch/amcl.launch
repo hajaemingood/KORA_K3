@@ -1,4 +1,5 @@
 <launch>
+  <arg name="launch_rviz" default="True"/>
   <node pkg="map_server" type="map_server" name="map_server"
         args="$(find kora_k3)/maps/real.yaml" />
 
