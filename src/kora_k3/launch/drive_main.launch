@@ -15,7 +15,4 @@
   <node pkg="kora_k3" type="base_link_pub.py"
         name="base_link_pub_node" output="screen" />
 
-  <node pkg="kora_k3" type="waypoint_visualization.py"
-        name="waypoint_visualization_node" output="screen" />
-
 </launch>

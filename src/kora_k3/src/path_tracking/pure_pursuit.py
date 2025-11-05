@@ -13,9 +13,9 @@ class Pure_pursuit:
             rospy.Subscriber("/base_link_pose", Pose2D, self.base_callback)
 
         # Target velocity 파라미터
-        self.target_speed = 1.5 # 기본 목표 속도
-        self.max_speed = 2.0
-        self.min_speed = 1.0
+        self.target_speed = 1.2 # 기본 목표 속도
+        self.max_speed = 1.5
+        self.min_speed = 0.8
         self.alpha = 1.5
 
         self.csv_file = "/root/KORA_K3/src/kora_k3/src/path_planning/outputs/waypoints.csv"

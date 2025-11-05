@@ -31,24 +31,48 @@ class Controller:
         self.follow_gap = Follow_the_gap()
         self.pure_pursuit = Pure_pursuit()
         self.gap_threshold = 1.2 # lidar detection range (m)
-        self.transfer = 1000/0.13
 
         self.scan_msg = None
         self.pose_msg = None
 
         # PID controllers (통합 제어)
-        self.steer_pid = PIDController(Kp=0.225, Ki=0.0, Kd=0.5) # Kp = 0.4 ,ki = 0.0 Kd = 0.5
+        default_steer_gains = {
+            "pure_pursuit": {"Kp": 0.5, "Ki": 0.0, "Kd": 0.5},
+            "gap_follow": {"Kp": 0.8, "Ki": 0.0, "Kd": 0.5},
+        }
+        steer_pid_params = rospy.get_param("~steer_pid_gains", default_steer_gains)
+        self.steer_pid_by_mode = {}
+        available_modes = set(default_steer_gains.keys()) | set(steer_pid_params.keys())
+        for mode_name in available_modes:
+            base = default_steer_gains.get(mode_name, default_steer_gains["pure_pursuit"])
+            custom = steer_pid_params.get(mode_name, {})
+            self.steer_pid_by_mode[mode_name] = PIDController(
+                Kp=custom.get("Kp", base["Kp"]),
+                Ki=custom.get("Ki", base["Ki"]),
+                Kd=custom.get("Kd", base["Kd"]),
+            )
+
         self.speed_pid = PIDController(Kp=5.0, Ki=5.0, Kd=20.0)
         self.current_mode = "pure_pursuit"
+        self.active_steer_pid = self._get_steer_pid(self.current_mode)
 
-        # 속도 변환 파라미터
-        self.speed_cmd_limits = (1.0*self.transfer , 2.0*self.transfer) # 0.13 m/s per 1000
-        self.speed_weight = 0.5
+        # 속도 변환 파라미터 (명령→속도 스케일 B 기반)
         self.rpm_per_data = 0.025
         self.wheel_radius = 0.05
+        self.speed_weight = 0.5
         self.speed_gain = (
             self.rpm_per_data * (2.0 * np.pi / 60.0) * self.wheel_radius * self.speed_weight
         )
+        if self.speed_gain <= 1e-6:
+            rospy.logwarn("speed_gain is too small; defaulting speed command limits")
+            self.speed_cmd_limits = (0.0, 0.0)
+        else:
+            min_cmd = 0.0
+            if self.pure_pursuit.min_speed > 0.0:
+                min_cmd = self.pure_pursuit.min_speed / self.speed_gain
+            max_speed_ref = max(self.pure_pursuit.max_speed, self.pure_pursuit.min_speed)
+            max_cmd = max_speed_ref / self.speed_gain
+            self.speed_cmd_limits = (float(min_cmd), float(max_cmd))
         self.speed_alpha = 0.3
         self.speed_est = 0.0
         self.last_speed_cmd = self.speed_cmd_limits[0]
@@ -94,6 +118,12 @@ class Controller:
     def to_servo_angle(self, steer_rad):
         return -(steer_rad - 0.5)
 
+    def _get_steer_pid(self, mode):
+        fallback = self.steer_pid_by_mode.get("pure_pursuit")
+        if fallback is None and self.steer_pid_by_mode:
+            fallback = next(iter(self.steer_pid_by_mode.values()))
+        return self.steer_pid_by_mode.get(mode, fallback)
+
     def control_loop(self, _event):
         if self.scan_msg is None or self.pose_msg is None:
             return
@@ -119,12 +149,13 @@ class Controller:
             target_speed = cruise_speed
 
         if mode != self.current_mode:
-            self.steer_pid.reset()
             self.speed_pid.reset()
             self.current_mode = mode
+            self.active_steer_pid = self._get_steer_pid(mode)
+            self.active_steer_pid.reset()
             rospy.loginfo(f"Controller mode: {mode}")
 
-        steer_cmd = float(np.clip(self.steer_pid.compute(steer_err), -0.5, 0.5))
+        steer_cmd = float(np.clip(self.active_steer_pid.compute(steer_err), -0.5, 0.5))
         servo_position = self.to_servo_angle(steer_cmd)
 
         current_speed = self.speed_est

@@ -8,4 +8,8 @@
 
   <!-- 3. SLAM Toolbox asynchronous mapper -->
   <include file="$(find kora_k3)/launch/amcl.launch"/>
+  
+  <node pkg="kora_k3" type="waypoint_visualization.py"
+        name="waypoint_visualization_node" output="screen" />
+
 </launch>
