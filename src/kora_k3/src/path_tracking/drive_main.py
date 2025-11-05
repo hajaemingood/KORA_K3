@@ -37,7 +37,7 @@ class Controller:
 
         # PID controllers (통합 제어)
         default_steer_gains = {
-            "pure_pursuit": {"Kp": 0.5, "Ki": 0.0, "Kd": 0.5},
+            "pure_pursuit": {"Kp": 0.3, "Ki": 0.0, "Kd": 0.5},
             "gap_follow": {"Kp": 0.8, "Ki": 0.0, "Kd": 0.5},
         }
         steer_pid_params = rospy.get_param("~steer_pid_gains", default_steer_gains)
@@ -156,6 +156,8 @@ class Controller:
             rospy.loginfo(f"Controller mode: {mode}")
 
         steer_cmd = float(np.clip(self.active_steer_pid.compute(steer_err), -0.5, 0.5))
+        #steer_cmd = float(np.clip(steer_err, -0.5, 0.5))
+        # 0.85
         servo_position = self.to_servo_angle(steer_cmd)
 
         current_speed = self.speed_est
