@@ -18,7 +18,7 @@ class Pure_pursuit:
         self.min_speed = 0.5
         self.alpha = 1.5
 
-        self.csv_file = "/root/KORA_K3/src/kora_k3/src/path_planning/outputs/waypoints.csv"
+        self.csv_file = "/root/KORA_K3/src/kora_k3/src/path_planning/outputs/optimal_waypoints.csv"
         self.waypoints = self.load_waypoints()
         self.curvature = 0.0
 

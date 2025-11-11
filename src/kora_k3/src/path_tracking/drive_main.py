@@ -59,9 +59,9 @@ class Controller:
         # 속도 변환 파라미터 (명령→속도 스케일 B 기반)
         self.rpm_per_data = 0.025
         self.wheel_radius = 0.05
-        self.speed_weight = 0.5
+        # self.speed_weight = 0.5
         self.speed_gain = (
-            self.rpm_per_data * (2.0 * np.pi / 60.0) * self.wheel_radius * self.speed_weight
+            self.rpm_per_data * (2.0 * np.pi / 60.0) * self.wheel_radius 
         )
         if self.speed_gain <= 1e-6:
             rospy.logwarn("speed_gain is too small; defaulting speed command limits")

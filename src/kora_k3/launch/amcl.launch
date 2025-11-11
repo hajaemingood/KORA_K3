@@ -1,6 +1,6 @@
 <launch>
   <node pkg="map_server" type="map_server" name="map_server"
-        args="$(find kora_k3)/maps/test1.yaml" />
+        args="$(find kora_k3)/maps/real.yaml" />
 
   <node pkg="amcl" type="amcl" name="amcl" output="screen">
     <!-- 프레임/TF -->
@@ -44,10 +44,10 @@
     <param name="odom_alpha4" value="0.1"/>
 
     <!-- 초기 자세(원하면 RViz에서 /initialpose로 덮어쓰기) -->
-    <param name="initial_pose_x" value="0.242"/>
-    <param name="initial_pose_y" value="0.265"/>
-    <param name="initial_pose_a" value="-0.506"/>
-    <!-- 0.242 0.265 -0.506 -->
+    <param name="initial_pose_x" value="6.388"/>
+    <param name="initial_pose_y" value="1.205"/>
+    <param name="initial_pose_a" value="2.57"/>
+    <!-- 7.147 0.245 2.57 -->
 
     <param name="initial_cov_xx" value="0.25"/>
     <param name="initial_cov_yy" value="0.25"/>
