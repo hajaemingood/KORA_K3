@@ -242,14 +242,6 @@ robot state
 - curvature 기반 steering command 계산
 - curvature가 클수록 목표 속도 감소
 
-기본 수식:
-
-```text
-L_d = clip(L_0 + k_v |v|, L_min, L_max)
-kappa = 2y / L_d^2
-v_target = (v_max - v_min) exp(-alpha |kappa|) + v_min
-```
-
 여기서 `L_d`는 lookahead distance, `y`는 차량 좌표계에서 목표점의 lateral error, `kappa`는 곡률입니다.
 
 ## Follow-the-Gap
